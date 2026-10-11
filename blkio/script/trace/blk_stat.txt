@@ -1,0 +1,69 @@
+================================================================================
+blk_queue_bio
+	blk_attempt_plug_merge
+		blk_try_merge
+		bio_attempt_back_merge
+			blk_account_io_start(req, false);
+		bio_attempt_front_merge
+			blk_account_io_start(req, false);
+
+	ret = elv_merge
+	if (ret == ELEVATOR_BACK_MERGE)
+		bio_attempt_back_merge
+			blk_account_io_start(req, false);
+		attempt_back_merge
+			attempt_merge
+				blk_account_io_merge
+	if (ret == ELEVATOR_FRONT_MERGE)
+		bio_attempt_front_merge
+			blk_account_io_start(req, false);
+		attempt_front_merge
+			attempt_merge
+				blk_account_io_merge
+
+	get_request
+		__get_request: req->start_time=jiffes;
+
+	init_request_from_bio
+	if (plug) {
+		list_add_tail(&req->queuelist, &plug->list);
+		blk_account_io_start(req, true);
+	} else {
+		add_acct_request(q, req, where);
+			blk_account_io_start(req, true);
+			__elv_add_request(q, req, where);
+		__blk_run_queue(q);
+	}
+
+
+blk_update_request
+	blk_account_io_completion(req, nr_bytes);
+
+blk_finish_request
+	blk_account_io_done(req);
+
+================================================================================
+statistics:
+blk_account_io_start
+	if (!new_io)
+		merges[rw]: part_stat_inc(cpu, part, merges[rw]);
+	else
+		part_round_stats(cpu, part);
+		part_inc_in_flight(part, rw);
+blk_account_io_merge
+	part_round_stats(cpu, part);
+	in_flight: part_dec_in_flight(part, rq_data_dir(req));
+blk_account_io_conpletion
+	sectors[rw]: part_stat_add(cpu, part, sectors[rw], bytes >> 9);
+blk_account_io_done
+	ios[rw]: part_stat_inc(cpu, part, ios[rw]);
+	ticks[rw]: part_stat_add(cpu, part, ticks[rw], duration);
+	part_round_stats(cpu, part);
+	in_flight: part_dec_in_flight(part, rw);
+
+================================================================================
+part_rond_stats:
+>part_round_stats_single(cpu, part, now);
+	if (inflight)
+	time_in_queue: __part_stat_add(cpu, part,time_in_queue, inflight * (now - part->stamp));
+	io_ticks: __part_stat_add(cpu, part, io_ticks, (now - part->stamp));
