@@ -1,6 +1,6 @@
 这个目录是一个远程可控制的 CPU 负载生成器，用来在 Linux 主机上按指定百分比"压"出对应的 CPU 使用率，主要面向 Docker 测试环境（比如验证调度、资源隔离、超卖检测等场景）。
 
-核心工作方式
+# 核心工作方式
 - cpu_load_generator_server.py — 服务端，跑在目标主机上，监听 31415 端口。
 - 收到一个整数 util（整机绝对百分比，每核 100，例如 4 核机器发 250 ≈ 62.5%）后，拆成两部分加载：
 - whole = util // 100：启动 N 个死循环进程（while True: pass），每个吃满一个核；
@@ -10,19 +10,19 @@
 - oneshot.py — 非交互的远程客户端：./oneshot.py <host> [port] util，发一次就断开，供脚本自动化调用。
 - cpu.py — 不联网的本地单机版，直接用同样的模型加载本机 CPU，Ctrl-C 停止。
 
-自动化脚本（基于 docker 环境）
+# 自动化脚本（基于 docker 环境）
 - sine_wave.sh — 在 Docker 宿主机上运行：用 docker inspect 读取一批容器的 CPU quota/period（即各自分到几个核），然后循环调用 oneshot.py 向每个容器按 配额 × 百分比 发送负载，并让百分比在 10~100 之间往复变化——在一组容器上模拟正弦波式的 CPU 利用率曲线，每 30 秒一变。
 - sine_wave.template.sh — 另一个版本（模板）：不依赖 docker inspect，直接维护两组容器主机名列表（group_a/group_b，按核数比例换算负载），没有被任何脚本引用。
 - start.sh / reset.sh — 操作入口：一个后台启动正弦波脚本，一个向指定主机发送 0 清空负载。目标主机改为参数传入或占位符，使用前需替换。
 
-典型用途
+# 典型用途
 从脚本逻辑看，它是在内部测试集群上人为制造可控的 CPU 压力：给容器/主机叠加已知的负载波形，然后观察或验证监控、调度、隔离类工具（比如这个工作区里的 cpu_sys_mon、overselling_detection 等）的表现。
 需要提醒的是：这些代码是 Python 2 写法的 Linux 工具，当前 macOS 机器上没有 python2/stress-ng/docker，不能直接运行，只能阅读代码验证。
 
 
 下面是完整用法。
 
-前置条件
+# 前置条件
 - 服务端（跑在目标机/容器里）：Linux + Python 2（/usr/bin/python）+ 已安装 stress-ng，31415 端口可被控制机访问。
 - 控制端：oneshot.py 刚才实测在 Python 3 下也能跑，所以这台 Mac 就能用来远程控制；交互式客户端（raw_input）必须 Python 2 且在服务端本机跑。
 
@@ -31,12 +31,12 @@
 ./cpu_load_generator_server.py
 在控制机上发送负载值（util 是整机绝对百分比，每核 100）：
 
-# 4 核机器为例
+4 核机器为例
 python3 oneshot.py <目标机IP或主机名> 100    # 1 个核满载，整机 25%
 python3 oneshot.py <目标机IP或主机名> 250    # 2.5 个核，整机 62.5%
 python3 oneshot.py <目标机IP或主机名> 0      # 立即清空所有负载
 
-# 需要指定端口时（默认 31415）：
+需要指定端口时（默认 31415）：
 python3 oneshot.py <host> 31415 250
 参数顺序是 <host> [port] util，端口省略时第二个参数就是 util。
 
@@ -60,7 +60,7 @@ start.sh / sine_wave.sh / reset.sh 是一套自动化：在 Docker 宿主机上�
 ./reset.sh <主机名>     # 给指定主机发 0 停止加载（不带参数则用脚本内默认值）
 工作原理：脚本对每个容器 docker inspect 出 CpuQuota/CpuPeriod（即分到几个核），然后发 核数 × 当前百分比——所以负载正好按容器配额比例缩放。这些容器 ID/主机名都是特定测试环境的，换环境必须替换占位符。sine_wave.template.sh 是另一个版本模板（按核数归一化、主机列表分 group_a/group_b 两组），没有任何脚本引用它。
 
-注意事项
+# 注意事项
 - 无认证：任何能访问 31415 端口的人都能把目标机 CPU 拉满，不要暴露到不可信网络。
 - 服务端一次只处理一个连接（listen(1)），且每次新数值都会先清掉旧负载再起新负载（reset），不是叠加。
 - 只有 part 部分依赖 stress-ng；即使 stress-ng 没装，whole 部分的死循环仍会跑起来（负载会偏小）。
