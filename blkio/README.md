@@ -48,38 +48,13 @@ export test_file_name=/dev/nvme0n1   # 必须覆盖，否则写 /dev/nvme1n1
 关于 rwc 这个程序：
 rwc（未 strip，符号和字符串都在），它的完整行为可以还原出来。结论：用法只有一种：./rwc <大小(MB)>，没有其它参数或选项。
 使用方法
-# 在 Linux 测试机上（必须 x86-64，静态 ELF，macOS 上跑不了）
+# 在 Linux 测试机上（必须 x86-64，静态 ELF）
 cd /你的可写目录        # abc.test 会建在当前目录
 ./rwc 1024             # 在当前目录创建/覆盖 1GB 的 abc.test，循环写→读→校验
 - 唯一参数是文件大小，单位 MB（内部 atoi(argv[1]) << 20）。
 - 无参数运行只会打印 please input file size in MB 然后退出（注意：它不会读 stdin，这句提示容易误解）。
 - 程序本身无限循环，只能 Ctrl+C 或出错时退出。跑完文件不会删除，需自行 rm abc.test。
-它到底做什么（从反汇编还原的逻辑）
-size = atoi(argv[1]) << 20;                    // MB -> bytes
-buf = memalign(4096, size);                    // 4K 对齐，因为要 O_DIRECT
-fd  = open("abc.test", O_RDWR|O_CREAT|O_DIRECT, 0644);
-for (;;) {
-    for (i = 0; i < size; i++) buf[i] = i % 256;   // 填充递增 pattern
-    puts("start write");
-    pwrite64(fd, buf, size, 0);                    // 一次性写整个文件
-    memset(buf, 0, size);
-    puts("start read");
-    pread64(fd, buf, size, 0);                     // 一次性读回
-    for (i = 0; i < size; i++)
-        if (buf[i] != i % 256) { dump(buf, i, size); exit; }  // 校验
-    printf("compare success %d\n", n++);           // 成功计数
-    usleep(1000000);                               // 睡 1 秒，再来一轮
-}
-典型输出：
-allo 1073741824          ← 分配了 1GB（"allo" 是原文写法）
-open success fd:3
-start write
-start read
-compare success 0
-start write
-start read
-compare success 1
-...
+
 用途和定位
 这是一个数据完整性校验 / 简单 IO 压测小工具（read-write-compare）：每轮把整个文件以 O_DIRECT 覆写、读回、逐字节比对，用来验证 SSD/设备是否发生静默数据损坏（返回数据和写入不一致）。它和 script/fio/ 里的 fio 压测是互补的，不被任何脚本调用，独立使用。
 值得注意的坑
