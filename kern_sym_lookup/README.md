@@ -13,13 +13,21 @@
 
 # 怎么用
 在 Linux 目标机上（需 root，否则 kptr_restrict 会让 /proc/kallsyms 全部显示为 0）：
+
 make                # gcc 编译出 sym_lookup
+
 sudo ./sym_lookup   # 或 sudo make run
+
 提示 "input kernel symbol address (hex):" 后输入地址，例如：
+
 ffffffff81001234  或  0xffffffff81001234  或  34120081ffffffff
+
 输出 [[ 函数名 ]] 0x函数起始地址
+
 脚本直接在 Linux 上用：
+
 ./timestamp_to_date.sh 12345
+
 ./two_date_seconds.sh "Wed Aug 11 19:55:20 2021" "Thu Nov 25 20:28:29 2021"
 
 # 重要限制
