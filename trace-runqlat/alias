@@ -1,0 +1,7 @@
+# 用途：为 Gerrit 风格的代码评审流程配置 git 推送别名（git master），并安装 commit-msg 钩子。
+# 使用前请修改：把 GIT_SERVER_URL 替换为你自己代码服务器上 commit-msg 钩子的地址。
+GIT_SERVER_URL="https://your-git-server.example.com/path/to/commit-msg"
+
+echo "use \"git master \" to push code for review"
+git config alias.master "push origin HEAD:refs/for/master"
+curl -fsSL "${GIT_SERVER_URL}" > .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg

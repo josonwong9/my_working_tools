@@ -1,0 +1,6 @@
+# 使用前请修改：reviewers/owners 替换为你自己团队的评审人/负责人账号（逗号分隔）
+reviewers: reviewer1,reviewer2,reviewer3
+owners: owner1,owner2,owner3
+strategy: ownerOne
+force: master
+onlyFastForwards: true
